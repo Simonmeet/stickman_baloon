@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stickman Balloon Shooter - 30s Challenge</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: sans-serif;
+    color: white;
+    user-select: none;
+    flex-direction: column;
+  }
+  canvas {
+    background: linear-gradient(#87ceeb, #e0f7ff);
+    border: 2px solid #000;
+  }
+  #restartBtn {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-size: 20px;
+    display: none;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="500"></canvas>
+<button id="restartBtn">Restart 30s Challenge</button>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+// -------------------
+// Game setup
+// -------------------
+let score = 0;
+let gameOver = false;
+let difficulty = 1;
+let timeLeft = 30; // 30s challenge
+const stickman = { x: canvas.width/2, y: canvas.height - 80, armUp: false };
+let balloons = [];
+let bullets = [];
+let particles = [];
+
+// Balloon types
+const balloonTypes = [
+  { color: "red", points: 1 },
+  { color: "blue", points: 2 },
+  { color: "green", points: 3 }
+];
+
+// Sounds
+const popSound = new Audio("https://www.soundjay.com/button/sounds/button-16.mp3"); 
+const bgMusic = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"); 
+bgMusic.loop = true;
+bgMusic.volume = 0.3;
+bgMusic.play();
+
+// -------------------
+// Stickman
+// -------------------
+function drawStickman() {
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(stickman.x, stickman.y - 30, 10, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(stickman.x, stickman.y - 20);
+  ctx.lineTo(stickman.x, stickman.y + 20);
+  ctx.stroke();
+  ctx.beginPath();
+  if(stickman.armUp){
+    ctx.moveTo(stickman.x, stickman.y);
+    ctx.lineTo(stickman.x + 15, stickman.y - 15);
+  } else {
+    ctx.moveTo(stickman.x - 15, stickman.y);
+    ctx.lineTo(stickman.x + 15, stickman.y);
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(stickman.x, stickman.y + 20);
+  ctx.lineTo(stickman.x - 15, stickman.y + 40);
+  ctx.moveTo(stickman.x, stickman.y + 20);
+  ctx.lineTo(stickman.x + 15, stickman.y + 40);
+  ctx.stroke();
+}
+
+// -------------------
+// Balloons
+// -------------------
+function spawnBalloon() {
+  const type = balloonTypes[Math.floor(Math.random() * balloonTypes.length)];
+  balloons.push({
+    x: Math.random() * (canvas.width - 40) + 20,
+    y: canvas.height + 30,
+    radius: 15,
+    speed: Math.random() * 1.5 + 0.5 + difficulty * 0.2,
+    color: type.color,
+    points: type.points
+  });
+}
+
+function drawBalloons() {
+  balloons.forEach(b => {
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function updateBalloons() {
+  balloons.forEach(b => {
+    b.y -= b.speed;
+    if(b.y - b.radius <= 0) gameOver = true;
+  });
+  balloons = balloons.filter(b => !gameOver);
+}
+
+// -------------------
+// Bullets
+// -------------------
+canvas.addEventListener("click", () => {
+  if(!gameOver){
+    bullets.push({ x: stickman.x, y: stickman.y - 20, speed: 6 });
+    stickman.armUp = true;
+    setTimeout(() => stickman.armUp = false, 100);
+  }
+});
+
+function drawBullets() {
+  ctx.fillStyle = "black";
+  bullets.forEach(b => {
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 4, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function updateBullets() {
+  bullets.forEach(b => b.y -= b.speed);
+  bullets = bullets.filter(b => b.y > 0);
+}
+
+// -------------------
+// Particles
+// -------------------
+function createParticles(x, y, color) {
+  for(let i=0;i<8;i++){
+    particles.push({
+      x: x,
+      y: y,
+      vx: Math.random()*4-2,
+      vy: Math.random()*-2-1,
+      alpha: 1,
+      color: color
+    });
+  }
+}
+
+function updateParticles() {
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.alpha -= 0.03;
+  });
+  particles = particles.filter(p => p.alpha > 0);
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.alpha;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+}
+
+// -------------------
+// Collision detection
+// -------------------
+function checkCollisions() {
+  bullets.forEach((bullet, bIndex) => {
+    balloons.forEach((balloon, lIndex) => {
+      const dx = bullet.x - balloon.x;
+      const dy = bullet.y - balloon.y;
+      const distance = Math.sqrt(dx*dx + dy*dy);
+      if(distance < balloon.radius){
+        score += balloon.points;
+        createParticles(balloon.x, balloon.y, balloon.color);
+        popSound.currentTime = 0;
+        popSound.play();
+        balloons.splice(lIndex, 1);
+        bullets.splice(bIndex, 1);
+      }
+    });
+  });
+}
+
+// -------------------
+// Stickman movement
+// -------------------
+document.addEventListener("keydown", e => {
+  if(gameOver) return;
+  if(e.key === "ArrowLeft") stickman.x -= 10;
+  if(e.key === "ArrowRight") stickman.x += 10;
+  if(stickman.x < 20) stickman.x = 20;
+  if(stickman.x > canvas.width - 20) stickman.x = canvas.width - 20;
+});
+
+// -------------------
+// Draw score & timer
+// -------------------
+function drawScore(){
+  ctx.fillStyle = "black";
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 10, 30);
+  ctx.fillText("Time: " + timeLeft + "s", canvas.width - 120, 30);
+}
+
+function drawGameOver(){
+  ctx.fillStyle = "black";
+  ctx.font = "40px Arial";
+  ctx.fillText("GAME OVER!", canvas.width/2 - 130, canvas.height/2);
+  ctx.fillText("Score: "+score, canvas.width/2 - 80, canvas.height/2 + 50);
+}
+
+// -------------------
+// Game loop
+// -------------------
+function gameLoop() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawStickman();
+  drawBalloons();
+  drawBullets();
+  drawParticles();
+  drawScore();
+
+  if(!gameOver){
+    updateBalloons();
+    updateBullets();
+    updateParticles();
+    checkCollisions();
+    requestAnimationFrame(gameLoop);
+  } else {
+    drawGameOver();
+    document.getElementById("restartBtn").style.display = "block";
+  }
+}
+
+// -------------------
+// Balloon spawn + difficulty
+// -------------------
+setInterval(() => {
+  if(!gameOver){
+    spawnBalloon();
+    difficulty += 0.01; // gradually faster
+  }
+}, 800);
+
+// -------------------
+// Countdown timer
+// -------------------
+const timer = setInterval(() => {
+  if(!gameOver){
+    timeLeft--;
+    if(timeLeft <= 0){
+      gameOver = true;
+      clearInterval(timer);
+      document.getElementById("restartBtn").style.display = "block";
+    }
+  }
+}, 1000);
+
+// -------------------
+// Restart
+// -------------------
+document.getElementById("restartBtn").addEventListener("click", () => {
+  score = 0; balloons=[]; bullets=[]; particles=[];
+  timeLeft = 30; difficulty = 1; gameOver = false;
+  document.getElementById("restartBtn").style.display = "none";
+  gameLoop();
+});
+
+gameLoop();
+</script>
+</body>
+</html>

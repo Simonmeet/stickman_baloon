@@ -2,316 +2,191 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman Balloon Shooter - Heaven Edition</title>
+<title>Marshmallow Animal Slingshot</title>
 <style>
-  body {
-    margin: 0;
-    background: #87ceeb;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    font-family: sans-serif;
-    user-select: none;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  canvas {
-    border: 2px solid #000;
-    background: linear-gradient(#87ceeb, #fff);
-  }
-  #restartBtn {
-    margin-top: 10px;
-    padding: 10px 20px;
-    font-size: 20px;
-    display: none;
-    cursor: pointer;
-  }
+body {
+  margin: 0;
+  background: #fce6f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Comic Sans MS', sans-serif;
+  user-select: none;
+  overflow: hidden;
+}
+canvas {
+  border: 2px solid #000;
+  background: linear-gradient(#fce6f0, #fff);
+}
+#coinsDisplay, #scoreDisplay {
+  font-size: 28px;
+  margin: 5px;
+  color: #ff3399;
+}
+#shop {
+  margin-top: 10px;
+}
+button {
+  padding: 8px 15px;
+  font-size: 20px;
+  margin: 5px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: #ffe6f2;
+  border: 2px solid #ff99cc;
+}
+#shop {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+#stageMsg {
+  font-size: 32px;
+  color: gold;
+  margin: 10px;
+  display: none;
+}
 </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="800" height="500"></canvas>
-<button id="restartBtn">Restart Game</button>
+
+<div id="stageMsg">Congratulations! Next Stage!</div>
+<div id="coinsDisplay">Coins: 0</div>
+<div id="scoreDisplay">Score: 0</div>
+<canvas id="gameCanvas" width="900" height="500"></canvas>
+
+<div id="shop"></div>
 
 <script>
-// -------------------
-// Game Setup
-// -------------------
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+let coins = 0;
 let score = 0;
+let stage = 1;
 let gameOver = false;
-let difficulty = 1;
 let balloons = [];
 let bullets = [];
 let particles = [];
-let stickman = { x: canvas.width/2, y: canvas.height - 80, armUp: false };
-
-// Balloon types
-const balloonTypes = [
-  { color: "red", points: 1 },
-  { color: "blue", points: 2 },
-  { color: "green", points: 3 },
-  { color: "yellow", points: 5 }
+let avatars = [
+  { name:"Stickman", price:0, ability:"straight" },
+  { name:"Cat", price:50, ability:"swipe" },
+  { name:"Dog", price:80, ability:"dash" },
+  { name:"Bird", price:100, ability:"hover" },
+  { name:"Cow", price:150, ability:"heavy" },
+  { name:"Goat", price:120, ability:"jump" },
+  { name:"Sheep", price:90, ability:"bounce" }
 ];
+let currentAvatar = avatars[0];
 
-// Sounds
+// Draw player avatar placeholder
+let stickman = {x: canvas.width/2, y: canvas.height-80, armUp:false, speed:10};
+const balloonColors = ["pink","red","blue"];
 const popSound = new Audio("https://www.soundjay.com/button/sounds/button-16.mp3");
+popSound.preload="auto";
 const bgMusic = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3");
-bgMusic.loop = true;
-bgMusic.volume = 0.2;
-bgMusic.play();
+bgMusic.loop=true; bgMusic.volume=0.2;
+let bgMusicStarted=false;
 
-// -------------------
-// Draw Stickman
-// -------------------
-function drawStickman() {
-  ctx.strokeStyle = "black";
-  ctx.lineWidth = 3;
-
-  // Head
+// Draw avatar
+function drawAvatar() {
+  ctx.fillStyle="black";
   ctx.beginPath();
-  ctx.arc(stickman.x, stickman.y - 30, 10, 0, Math.PI*2);
+  ctx.arc(stickman.x, stickman.y-30, 12,0,Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle="black";
+  ctx.beginPath();
+  ctx.moveTo(stickman.x, stickman.y-20);
+  ctx.lineTo(stickman.x, stickman.y+20);
   ctx.stroke();
-
-  // Body
   ctx.beginPath();
-  ctx.moveTo(stickman.x, stickman.y - 20);
-  ctx.lineTo(stickman.x, stickman.y + 20);
+  if(stickman.armUp){ ctx.moveTo(stickman.x,stickman.y); ctx.lineTo(stickman.x+15, stickman.y-15);} 
+  else {ctx.moveTo(stickman.x-15,stickman.y); ctx.lineTo(stickman.x+15,stickman.y);}
   ctx.stroke();
-
-  // Arms
   ctx.beginPath();
-  if(stickman.armUp){
-    ctx.moveTo(stickman.x, stickman.y);
-    ctx.lineTo(stickman.x + 15, stickman.y - 15);
-  } else {
-    ctx.moveTo(stickman.x - 15, stickman.y);
-    ctx.lineTo(stickman.x + 15, stickman.y);
-  }
-  ctx.stroke();
-
-  // Legs
-  ctx.beginPath();
-  ctx.moveTo(stickman.x, stickman.y + 20);
-  ctx.lineTo(stickman.x - 15, stickman.y + 40);
-  ctx.moveTo(stickman.x, stickman.y + 20);
-  ctx.lineTo(stickman.x + 15, stickman.y + 40);
+  ctx.moveTo(stickman.x, stickman.y+20);
+  ctx.lineTo(stickman.x-15, stickman.y+40);
+  ctx.moveTo(stickman.x, stickman.y+20);
+  ctx.lineTo(stickman.x+15, stickman.y+40);
   ctx.stroke();
 }
 
-// -------------------
 // Balloons
-// -------------------
-function spawnBalloon() {
-  const type = balloonTypes[Math.floor(Math.random() * balloonTypes.length)];
-  balloons.push({
-    x: Math.random() * (canvas.width - 40) + 20,
-    y: canvas.height + 30,
-    radius: 15,
-    speed: Math.random() * 1.5 + 0.5 + difficulty * 0.2,
-    color: type.color,
-    points: type.points
-  });
+function spawnBalloon(){
+  balloons.push({x:Math.random()*(canvas.width-40)+20, y:canvas.height+20, radius:15, speed:Math.random()*1.5+0.5+stage*0.2, color:balloonColors[Math.floor(Math.random()*3)]});
 }
-
-function drawBalloons() {
-  balloons.forEach(b => {
-    ctx.fillStyle = b.color;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
-    ctx.fill();
-    ctx.strokeStyle = "white";
-    ctx.stroke();
-  });
+function drawBalloons(){
+  balloons.forEach(b=>{ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.radius,0,Math.PI*2); ctx.fill(); ctx.strokeStyle="white"; ctx.stroke();});
 }
+function updateBalloons(){ balloons.forEach(b=>{b.y-=b.speed;if(b.y-b.radius<=0) gameOver=true;}); balloons=balloons.filter(b=>!gameOver);}
 
-function updateBalloons() {
-  balloons.forEach(b => {
-    b.y -= b.speed;
-    if(b.y - b.radius <= 0) gameOver = true;
-  });
-  balloons = balloons.filter(b => !gameOver);
-}
-
-// -------------------
 // Bullets
-// -------------------
-canvas.addEventListener("click", () => {
-  if(!gameOver){
-    bullets.push({ x: stickman.x, y: stickman.y - 20, speed: 6 });
-    stickman.armUp = true;
-    setTimeout(() => stickman.armUp = false, 100);
+canvas.addEventListener("click",()=>{
+  if(!gameOver){ 
+    if(!bgMusicStarted){bgMusic.play(); bgMusicStarted=true;} 
+    bullets.push({x:stickman.x, y:stickman.y-20, speed:6}); 
+    stickman.armUp=true; 
+    setTimeout(()=>stickman.armUp=false,100);
   }
 });
+function drawBullets(){ bullets.forEach(b=>{ctx.fillStyle="black";ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();});}
+function updateBullets(){ bullets.forEach(b=>b.y-=b.speed); bullets=bullets.filter(b=>b.y>0);}
 
-function drawBullets() {
-  ctx.fillStyle = "black";
-  bullets.forEach(b => {
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 4, 0, Math.PI*2);
-    ctx.fill();
-  });
-}
-
-function updateBullets() {
-  bullets.forEach(b => b.y -= b.speed);
-  bullets = bullets.filter(b => b.y > 0);
-}
-
-// -------------------
-// Particles
-// -------------------
-function createParticles(x, y, color) {
-  for(let i=0;i<8;i++){
-    particles.push({
-      x: x,
-      y: y,
-      vx: Math.random()*4-2,
-      vy: Math.random()*-2-1,
-      alpha: 1,
-      color: color
-    });
-  }
-}
-
-function updateParticles() {
-  particles.forEach(p => {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.alpha -= 0.03;
-  });
-  particles = particles.filter(p => p.alpha > 0);
-}
-
-function drawParticles() {
-  particles.forEach(p => {
-    ctx.fillStyle = p.color;
-    ctx.globalAlpha = p.alpha;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  });
-}
-
-// -------------------
 // Collision detection
-// -------------------
-function checkCollisions() {
-  bullets.forEach((bullet, bIndex) => {
-    balloons.forEach((balloon, lIndex) => {
-      const dx = bullet.x - balloon.x;
-      const dy = bullet.y - balloon.y;
-      const distance = Math.sqrt(dx*dx + dy*dy);
-      if(distance < balloon.radius){
-        score += balloon.points;
-        createParticles(balloon.x, balloon.y, balloon.color);
-        popSound.currentTime = 0;
-        popSound.play();
-        balloons.splice(lIndex, 1);
-        bullets.splice(bIndex, 1);
+function checkCollisions(){ 
+  bullets.forEach((bullet,bi)=>{
+    balloons.forEach((balloon,li)=>{
+      let dx=bullet.x-balloon.x; let dy=bullet.y-balloon.y; let dist=Math.sqrt(dx*dx+dy*dy); 
+      if(dist<balloon.radius){
+        score+=1; coins+=1; 
+        document.getElementById("coinsDisplay").textContent="Coins: "+coins;
+        createParticles(balloon.x, balloon.y, balloon.color); 
+        popSound.currentTime=0; popSound.play(); 
+        balloons.splice(li,1); bullets.splice(bi,1);
       }
     });
   });
 }
 
-// -------------------
-// Stickman movement
-// -------------------
-document.addEventListener("keydown", e => {
-  if(gameOver) return;
-  if(e.key === "ArrowLeft") stickman.x -= 10;
-  if(e.key === "ArrowRight") stickman.x += 10;
-  if(stickman.x < 20) stickman.x = 20;
-  if(stickman.x > canvas.width - 20) stickman.x = canvas.width - 20;
-});
+// Particles
+function createParticles(x,y,color){for(let i=0;i<8;i++){particles.push({x:x,y:y,vx:Math.random()*4-2,vy:Math.random()*-2-1,alpha:1,color:color});}}
+function updateParticles(){particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.alpha-=0.03;}); particles=particles.filter(p=>p.alpha>0);}
+function drawParticles(){particles.forEach(p=>{ctx.fillStyle=p.color; ctx.globalAlpha=p.alpha; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;});}
 
-// Mouse controls stickman
-canvas.addEventListener("mousemove", e => {
-  if(!gameOver){
-    const rect = canvas.getBoundingClientRect();
-    stickman.x = e.clientX - rect.left;
-  }
-});
+// Controls
+document.addEventListener("keydown",e=>{if(gameOver)return; if(e.key==="ArrowLeft") stickman.x-=stickman.speed; if(e.key==="ArrowRight") stickman.x+=stickman.speed; if(stickman.x<20) stickman.x=20; if(stickman.x>canvas.width-20) stickman.x=canvas.width-20;});
+canvas.addEventListener("mousemove",e=>{if(!gameOver){let rect=canvas.getBoundingClientRect(); stickman.x=e.clientX-rect.left;}});
 
-// -------------------
-// Draw score & timer
-// -------------------
-let timeLeft = 60; // 1 min game
-function drawScore(){
-  ctx.fillStyle = "black";
-  ctx.font = "20px Arial";
-  ctx.fillText("Score: " + score, 10, 30);
-  ctx.fillText("Time: " + timeLeft + "s", canvas.width - 120, 30);
-}
+// Draw Score
+function drawScore(){ctx.fillStyle="black"; ctx.font="28px Comic Sans MS"; ctx.fillText("Score: "+score,10,30); ctx.fillText("Stage: "+stage, canvas.width/2-40,30);}
 
-function drawGameOver(){
-  ctx.fillStyle = "black";
-  ctx.font = "40px Arial";
-  ctx.fillText("GAME OVER!", canvas.width/2 - 130, canvas.height/2);
-  ctx.fillText("Score: "+score, canvas.width/2 - 80, canvas.height/2 + 50);
-}
+// Game Over / Stage message
+const stageMsg = document.getElementById("stageMsg");
+function showStageMsg(){stageMsg.style.display="block"; setTimeout(()=>{stageMsg.style.display="none"; nextStage();},2000);}
+function nextStage(){stage++; balloons=[]; bullets=[]; particles=[]; gameOver=false; stickman.speed+=1; gameLoop();}
 
-// -------------------
 // Game loop
-// -------------------
-function gameLoop() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawStickman();
-  drawBalloons();
-  drawBullets();
-  drawParticles();
-  drawScore();
-  if(!gameOver){
-    updateBalloons();
-    updateBullets();
-    updateParticles();
-    checkCollisions();
-    requestAnimationFrame(gameLoop);
-  } else {
-    drawGameOver();
-    document.getElementById("restartBtn").style.display = "block";
-  }
+function gameLoop(){ctx.clearRect(0,0,canvas.width,canvas.height); drawAvatar(); drawBalloons(); drawBullets(); drawParticles(); drawScore(); if(!gameOver){updateBalloons(); updateBullets(); updateParticles(); checkCollisions(); requestAnimationFrame(gameLoop);} else {showStageMsg();}}
+
+// Balloon spawn interval
+setInterval(()=>{if(!gameOver){spawnBalloon();}},1000-stage*50>300?1000-stage*50:300);
+
+// Shop
+function createShop(){
+  const shopDiv = document.getElementById("shop");
+  avatars.forEach((av,i)=>{
+    const btn = document.createElement("button");
+    btn.textContent = av.name+" ("+av.price+" coins)";
+    btn.addEventListener("click",()=>{
+      if(coins>=av.price){coins-=av.price; document.getElementById("coinsDisplay").textContent="Coins: "+coins; currentAvatar=av; alert("Unlocked "+av.name+"!");}
+      else{alert("Not enough coins!");}
+    });
+    shopDiv.appendChild(btn);
+  });
 }
-
-// -------------------
-// Balloon spawn + difficulty
-// -------------------
-setInterval(() => {
-  if(!gameOver){
-    spawnBalloon();
-    difficulty += 0.01;
-  }
-}, 700);
-
-// -------------------
-// Countdown timer
-// -------------------
-const timer = setInterval(() => {
-  if(!gameOver){
-    timeLeft--;
-    if(timeLeft <= 0){
-      gameOver = true;
-      clearInterval(timer);
-      document.getElementById("restartBtn").style.display = "block";
-    }
-  }
-}, 1000);
-
-// -------------------
-// Restart
-// -------------------
-document.getElementById("restartBtn").addEventListener("click", () => {
-  score = 0; balloons=[]; bullets=[]; particles=[];
-  timeLeft = 60; difficulty = 1; gameOver = false;
-  document.getElementById("restartBtn").style.display = "none";
-  gameLoop();
-});
+createShop();
 
 gameLoop();
 </script>
 </body>
 </html>
-

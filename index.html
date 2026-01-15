@@ -2,23 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stickman Balloon Shooter - 30s Challenge</title>
+<title>Stickman Balloon Shooter - Heaven Edition</title>
 <style>
   body {
     margin: 0;
-    background: #111;
+    background: #87ceeb;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     font-family: sans-serif;
-    color: white;
     user-select: none;
     flex-direction: column;
+    overflow: hidden;
   }
   canvas {
-    background: linear-gradient(#87ceeb, #e0f7ff);
     border: 2px solid #000;
+    background: linear-gradient(#87ceeb, #fff);
   }
   #restartBtn {
     margin-top: 10px;
@@ -31,51 +31,57 @@
 </head>
 <body>
 <canvas id="gameCanvas" width="800" height="500"></canvas>
-<button id="restartBtn">Restart 30s Challenge</button>
+<button id="restartBtn">Restart Game</button>
 
 <script>
+// -------------------
+// Game Setup
+// -------------------
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// -------------------
-// Game setup
-// -------------------
 let score = 0;
 let gameOver = false;
 let difficulty = 1;
-let timeLeft = 30; // 30s challenge
-const stickman = { x: canvas.width/2, y: canvas.height - 80, armUp: false };
 let balloons = [];
 let bullets = [];
 let particles = [];
+let stickman = { x: canvas.width/2, y: canvas.height - 80, armUp: false };
 
 // Balloon types
 const balloonTypes = [
   { color: "red", points: 1 },
   { color: "blue", points: 2 },
-  { color: "green", points: 3 }
+  { color: "green", points: 3 },
+  { color: "yellow", points: 5 }
 ];
 
 // Sounds
-const popSound = new Audio("https://www.soundjay.com/button/sounds/button-16.mp3"); 
-const bgMusic = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"); 
+const popSound = new Audio("https://www.soundjay.com/button/sounds/button-16.mp3");
+const bgMusic = new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3");
 bgMusic.loop = true;
-bgMusic.volume = 0.3;
+bgMusic.volume = 0.2;
 bgMusic.play();
 
 // -------------------
-// Stickman
+// Draw Stickman
 // -------------------
 function drawStickman() {
   ctx.strokeStyle = "black";
   ctx.lineWidth = 3;
+
+  // Head
   ctx.beginPath();
   ctx.arc(stickman.x, stickman.y - 30, 10, 0, Math.PI*2);
   ctx.stroke();
+
+  // Body
   ctx.beginPath();
   ctx.moveTo(stickman.x, stickman.y - 20);
   ctx.lineTo(stickman.x, stickman.y + 20);
   ctx.stroke();
+
+  // Arms
   ctx.beginPath();
   if(stickman.armUp){
     ctx.moveTo(stickman.x, stickman.y);
@@ -85,6 +91,8 @@ function drawStickman() {
     ctx.lineTo(stickman.x + 15, stickman.y);
   }
   ctx.stroke();
+
+  // Legs
   ctx.beginPath();
   ctx.moveTo(stickman.x, stickman.y + 20);
   ctx.lineTo(stickman.x - 15, stickman.y + 40);
@@ -114,6 +122,8 @@ function drawBalloons() {
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
     ctx.fill();
+    ctx.strokeStyle = "white";
+    ctx.stroke();
   });
 }
 
@@ -218,9 +228,18 @@ document.addEventListener("keydown", e => {
   if(stickman.x > canvas.width - 20) stickman.x = canvas.width - 20;
 });
 
+// Mouse controls stickman
+canvas.addEventListener("mousemove", e => {
+  if(!gameOver){
+    const rect = canvas.getBoundingClientRect();
+    stickman.x = e.clientX - rect.left;
+  }
+});
+
 // -------------------
 // Draw score & timer
 // -------------------
+let timeLeft = 60; // 1 min game
 function drawScore(){
   ctx.fillStyle = "black";
   ctx.font = "20px Arial";
@@ -245,7 +264,6 @@ function gameLoop() {
   drawBullets();
   drawParticles();
   drawScore();
-
   if(!gameOver){
     updateBalloons();
     updateBullets();
@@ -264,9 +282,9 @@ function gameLoop() {
 setInterval(() => {
   if(!gameOver){
     spawnBalloon();
-    difficulty += 0.01; // gradually faster
+    difficulty += 0.01;
   }
-}, 800);
+}, 700);
 
 // -------------------
 // Countdown timer
@@ -287,7 +305,7 @@ const timer = setInterval(() => {
 // -------------------
 document.getElementById("restartBtn").addEventListener("click", () => {
   score = 0; balloons=[]; bullets=[]; particles=[];
-  timeLeft = 30; difficulty = 1; gameOver = false;
+  timeLeft = 60; difficulty = 1; gameOver = false;
   document.getElementById("restartBtn").style.display = "none";
   gameLoop();
 });
@@ -296,3 +314,4 @@ gameLoop();
 </script>
 </body>
 </html>
+
